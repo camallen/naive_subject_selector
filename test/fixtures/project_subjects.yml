@@ -1,0 +1,13 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  zooniverse_id: MyString
+  priority: 1
+  seen_user_ids: MyString
+  properties: 
+
+two:
+  zooniverse_id: MyString
+  priority: 1
+  seen_user_ids: MyString
+  properties: 

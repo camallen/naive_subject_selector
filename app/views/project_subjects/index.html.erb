@@ -1,0 +1,33 @@
+<h1>Listing project_subjects</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Zooniverse</th>
+      <th>Priority</th>
+      <th>Seen user ids</th>
+      <th>Properties</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @project_subjects.each do |project_subject| %>
+      <tr>
+        <td><%= project_subject.zooniverse_id %></td>
+        <td><%= project_subject.priority %></td>
+        <td><%= project_subject.seen_user_ids %></td>
+        <td><%= project_subject.properties %></td>
+        <td><%= link_to 'Show', project_subject %></td>
+        <td><%= link_to 'Edit', edit_project_subject_path(project_subject) %></td>
+        <td><%= link_to 'Destroy', project_subject, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Project subject', new_project_subject_path %>

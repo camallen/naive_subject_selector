@@ -1,0 +1,24 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <strong>Zooniverse:</strong>
+  <%= @project_subject.zooniverse_id %>
+</p>
+
+<p>
+  <strong>Priority:</strong>
+  <%= @project_subject.priority %>
+</p>
+
+<p>
+  <strong>Seen user ids:</strong>
+  <%= @project_subject.seen_user_ids %>
+</p>
+
+<p>
+  <strong>Properties:</strong>
+  <%= @project_subject.properties %>
+</p>
+
+<%= link_to 'Edit', edit_project_subject_path(@project_subject) %> |
+<%= link_to 'Back', project_subjects_path %>
