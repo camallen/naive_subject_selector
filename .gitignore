@@ -23,3 +23,6 @@ naive_subject_selector_db*
 *.sql
 *secret*
 .DS_Store
+
+#ignore bins
+bin/*
