@@ -19,11 +19,15 @@ class ClassificationSimulation
       @active_user_set.each do |user_id|
         #under no load my laptop can do ~ 100 in 0.246012 secs, so ~0.0025 sec / update
         #attempt to rate limit the input of classifications (using the above then these limits will roughly work)
-        # (0.05)  = 20/s 1200/min
-        # (0.067) = 15/s 900/min
-        # (0.1)   = 10/s 600/min
-        # (0.17)  = 6/s 360/min
-        sleep(0.17)
+        # (0.0025) = 400/s 24000/min -> no sleep just run as fast as it can
+        # (0.01)   = 100/s 6000/min
+        # (0.02)   = 50/s  3000/min
+        # (0.05)   = 20/s  1200/min
+        # (0.067)  = 15/s  900/min
+        # (0.1)    = 10/s  600/min
+        # (0.17)   = 6/s   360/min
+        # (0.67)   = 1.5/s 90/min
+        # sleep(0.01)
         classify_subject(user_id)
       end
     end
