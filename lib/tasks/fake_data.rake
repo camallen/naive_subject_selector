@@ -4,8 +4,8 @@ namespace :fake_data do
 
   def fake_range
     #test / beta project
-    # (1..1000)
-    (1..200000)
+    (1..1000)
+    #(1..200000)
     #very large project
     # (1..5_000_000)
   end
@@ -32,29 +32,29 @@ namespace :fake_data do
     fake_user_range.to_a.sample(num)
   end
 
-  def power_user_ids
-    #large simulation
-    [ "1", "10", "20", "30", "45" ]
+  def fake_seen_fake_subject_ids(num)
+    fake_range.to_a.sample(num)
   end
 
-  def number_of_seen_users
-    retirement_range.to_a.sample
+  def number_of_seen_subjects
+    fake_range.to_a.sample
   end
 
   # would a valid retirement happen around 30 classifications?
   #   depending on the rules possibly.
   def retirement_range
+    (1..10)
     #large simulation
-    (1..30)
+    # (1..30)
   end
 
-  def update_seen_user_ids(ps_id, user_ids)
-    formatted_user_ids = '{"' << user_ids.join('","') << '"}'
-    ActiveRecord::Base.connection.execute("UPDATE \"project_subjects\" SET \"seen_user_ids\" = '#{formatted_user_ids}' WHERE \"project_subjects\".\"id\" = #{ps_id};")
+  def update_seen_subject_ids(user_id, subject_ids)
+    formatted_ids = '{"' << subject_ids.join('","') << '"}'
+    ActiveRecord::Base.connection.execute("UPDATE \"users\" SET \"seen_subject_ids\" = '#{formatted_ids}' WHERE \"id\" = #{user_id};")
   end
 
-  def unseen_project_subjects
-    ProjectSubject.where("seen_user_ids = '{}' OR seen_user_ids IS NULL")
+  def users_without_seen_subjects
+    User.where("seen_subject_ids = '{}' OR seen_subject_ids IS NULL")
   end
 
   desc 'fake a bunch of project subjects'
@@ -74,6 +74,12 @@ namespace :fake_data do
     end
   end
 
+  desc 'fake the active subjects for a project'
+  task :create_fake_active_subjects => :environment do
+    SubjectsToClassify.delete_all
+    SubjectsToClassify.create(subject_ids: fake_range.to_a)
+  end
+
   desc 'fake a bunch of users'
   task :create_fake_users => :environment do
     users = []
@@ -83,24 +89,19 @@ namespace :fake_data do
     User.import users
   end
 
-  desc 'add some seen users to a sample of the data'
-  task :fake_user_seen_subjects => :environment do
-    sample_size = fake_range.last / 2
-    unseen_subject_ids = unseen_project_subjects.map(&:id)
-    fake_range.to_a.sample(sample_size).each do |id|
-      if unseen_subject_ids.include?(id)
-        update_seen_user_ids(id, fake_seen_fake_user_ids(number_of_seen_users))
-      end
-      # @note: attempted to output to a file (redirection) and then import...(no metrics but it didn't feel any quicker)
-      # pg_seen_user_ids_array_string = '{"' << fake_seen_fake_user_ids(number_of_seen_users).join('","') << '"}'
-      # puts "UPDATE \"project_subjects\" SET \"seen_user_ids\" = '#{pg_seen_user_ids_array_string}' WHERE \"project_subjects\".\"id\" = #{id};"
-    end
+  desc 'reset seen subject ids for all users'
+  task :reset_user_seen_subject_ids => :environment do
+    User.update_all(seen_subject_ids: [])
   end
 
-  desc 'even out distribution of seen users to the rest of the subjects'
-  task :even_out_fake_seen_subjects_distribution => :environment do
-    unseen_project_subjects.find_each(batch_size: 10_000) do |ps|
-      ps.update_column 'seen_user_ids', fake_seen_fake_user_ids(number_of_seen_users)
+  desc 'add some seen subjects to a sample of the user data'
+  task :fake_user_seen_subjects => :environment do
+    user_sample_size = fake_user_range.last / 2
+    users_without_subject_ids = users_without_seen_subjects.map(&:id)
+    fake_seen_fake_user_ids(user_sample_size).each do |user_id|
+      if users_without_subject_ids.include?(user_id)
+        update_seen_subject_ids(user_id, fake_seen_fake_subject_ids(number_of_seen_subjects))
+      end
     end
   end
 
@@ -109,33 +110,5 @@ namespace :fake_data do
     sample_size = fake_range.last / 4
     random_ids = fake_range.to_a.sample(sample_size)
     ProjectSubject.where(id: random_ids).update_all(active: false)
-  end
-
-  desc 'simulate power users and the long tail'
-  task :fake_power_users => :environment do
-    percent_complete = (fake_range.last * 0.85).to_i
-    fake_range.to_a.sample(percent_complete).each do |id|
-      fake_users_and_power_users = fake_seen_fake_user_ids(number_of_seen_users) | power_user_ids
-      update_seen_user_ids(id, fake_users_and_power_users)
-    end
-  end
-
-  desc 'create a simulation to get the shape of a the count size query distribution'
-  task :run_psuedo_random_selection_simulation => :environment do
-    ProjectSubject.update_all seen_user_ids: []
-    (1..25).each do |classification_num|
-      #select a random user among the 20
-      (1..20).each do |user_num|
-        #the crux of it here...randomly sample a set from a possible limit (would look for just ID's in reality as well)
-        #this is linear progression through the empty set of unseen subjects on a sliding window
-        query_str = "'#{user_num}' != ALL (seen_user_ids) AND (array_length(seen_user_ids, 1) IS NULL OR array_length(seen_user_ids, 1) < #{retirement_range.last})"
-        if ps = ProjectSubject.where(query_str).limit(100).sample(1).first
-          # ps = ProjectSubject.where(query_str).limit(1).first
-          ps.update_column 'seen_user_ids', ps.seen_user_ids << user_num
-        else
-          raise Exception.new("ERROR IN SELECTION -> NEED TO FIND AT LEAST ONE SUBJECT TO SERVE!")
-        end
-      end
-    end
   end
 end

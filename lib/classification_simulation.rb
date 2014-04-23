@@ -1,7 +1,8 @@
 class ClassificationSimulation
 
   def self.reset_subjects_to_clean_slate
-    ProjectSubject.update_all seen_user_ids: [], active: true
+    ProjectSubject.update_all active: true
+    User.update_all seen_subject_ids: []
   end
 
   #run this as a concurrent set of user's from the 'concurrent_selection_simulation.sh' script
