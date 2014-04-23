@@ -26,3 +26,4 @@ naive_subject_selector_db*
 
 #ignore bins
 bin/*
+benchmarks/*
