@@ -4,8 +4,8 @@ namespace :fake_data do
 
   def fake_range
     #test / beta project
-    (1..1000)
-    #(1..200000)
+    # (1..1000)
+    (1..200000)
     #very large project
     # (1..5_000_000)
   end
@@ -23,9 +23,9 @@ namespace :fake_data do
   end
 
   def fake_user_range
-    (1..5000)
+    #(1..5000)
     #very large set of users
-    # (1..10_000)
+    (1..10_000)
   end
 
   def fake_seen_fake_user_ids(num)
@@ -43,9 +43,9 @@ namespace :fake_data do
   # would a valid retirement happen around 30 classifications?
   #   depending on the rules possibly.
   def retirement_range
-    (1..10)
+    #(1..10)
     #large simulation
-    # (1..30)
+    (1..30)
   end
 
   def update_seen_subject_ids(user_id, subject_ids)
