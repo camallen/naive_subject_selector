@@ -4,8 +4,8 @@ namespace :fake_data do
 
   def fake_range
     #test / beta project
-    # (1..1000)
-    (1..200000)
+    #(1..1000)
+    (1..200_000)
     #very large project
     # (1..5_000_000)
   end
@@ -23,9 +23,9 @@ namespace :fake_data do
   end
 
   def fake_user_range
-    (1..5000)
+    #(1..5000)
     #very large set of users
-    # (1..10_000)
+    (1..10_000)
   end
 
   def fake_seen_fake_user_ids(num)
@@ -48,14 +48,21 @@ namespace :fake_data do
     (1..30)
   end
 
-  def update_seen_user_ids(ps_id, user_ids)
-    formatted_user_ids = '{"' << user_ids.join('","') << '"}'
-    ActiveRecord::Base.connection.execute("UPDATE \"project_subjects\" SET \"seen_user_ids\" = '#{formatted_user_ids}' WHERE \"project_subjects\".\"id\" = #{ps_id};")
+  def add_user_seen_subjects(subject_user_ids)
+    subject_user_ids.each_slice(25_000) do |id_pairs|
+      uss = []
+      id_pairs.each do |id_pair|
+        uss << UserSeenSubject.new(user_id: id_pair.user_id, subject_id: id_pair.subject_id)
+      end
+      UserSeenSubject.import uss
+    end
   end
 
   def unseen_project_subjects
-    ProjectSubject.where("seen_user_ids = '{}' OR seen_user_ids IS NULL")
+    ProjectSubject.select(:id).map(&:id) - UserSeenSubject.select(:subject_id).map(&:subject_id)
   end
+
+  IdPair = Struct.new(:user_id, :subject_id)
 
   desc 'fake a bunch of project subjects'
   task :create_fake_project_subjects => :environment do
@@ -86,21 +93,25 @@ namespace :fake_data do
   desc 'add some seen users to a sample of the data'
   task :fake_user_seen_subjects => :environment do
     sample_size = fake_range.last / 2
-    unseen_subject_ids = unseen_project_subjects.map(&:id)
-    fake_range.to_a.sample(sample_size).each do |id|
-      if unseen_subject_ids.include?(id)
-        update_seen_user_ids(id, fake_seen_fake_user_ids(number_of_seen_users))
+    seen_subject_user_ids = []
+    puts "#{DateTime.now} - Constructing a set of UserSeenSubjects"
+    fake_range.to_a.sample(sample_size).each do |subject_id|
+      unless UserSeenSubject.exists?(subject_id: subject_id)
+        seen_subject_user_ids << IdPair.new(fake_seen_fake_user_ids(1).first, subject_id)
       end
-      # @note: attempted to output to a file (redirection) and then import...(no metrics but it didn't feel any quicker)
-      # pg_seen_user_ids_array_string = '{"' << fake_seen_fake_user_ids(number_of_seen_users).join('","') << '"}'
-      # puts "UPDATE \"project_subjects\" SET \"seen_user_ids\" = '#{pg_seen_user_ids_array_string}' WHERE \"project_subjects\".\"id\" = #{id};"
     end
+    puts "#{DateTime.now} - Go ahead and import them"
+    add_user_seen_subjects(seen_subject_user_ids)
   end
 
-  desc 'even out distribution of seen users to the rest of the subjects'
+  desc 'even out distribution of seen subjects'
   task :even_out_fake_seen_subjects_distribution => :environment do
-    unseen_project_subjects.find_each(batch_size: 10_000) do |ps|
-      ps.update_column 'seen_user_ids', fake_seen_fake_user_ids(number_of_seen_users)
+    unseen_project_subjects.each_slice(10_000) do |unseen_subject_ids|
+      uss = []
+      unseen_subject_ids.each do |unseen_subject_id|
+        uss << UserSeenSubject.new(user_id: fake_seen_fake_user_ids(1).first, subject_id: unseen_subject_id)
+      end
+      UserSeenSubject.import uss
     end
   end
 
@@ -114,9 +125,15 @@ namespace :fake_data do
   desc 'simulate power users and the long tail'
   task :fake_power_users => :environment do
     percent_complete = (fake_range.last * 0.85).to_i
-    fake_range.to_a.sample(percent_complete).each do |id|
-      fake_users_and_power_users = fake_seen_fake_user_ids(number_of_seen_users) | power_user_ids
-      update_seen_user_ids(id, fake_users_and_power_users)
+    completed_subject_ids = fake_range.to_a.sample(percent_complete)
+    completed_subject_ids.each_slice(2000) do |batch_of_subject_ids|
+      uss = []
+      batch_of_subject_ids.each do |subject_id|
+        power_user_ids.each do |power_user_id|
+          uss << UserSeenSubject.new(user_id: power_user_id, subject_id: subject_id)
+        end
+      end
+      UserSeenSubject.import uss
     end
   end
 
