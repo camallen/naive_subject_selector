@@ -1,6 +1,6 @@
 #!/bin/bash
 
-bin/rails runner "ClassificationSimulation.reset_subjects_to_clean_slate"
+bin/rails runner "UserSeenSubject.reset_user_seen_subjects"
 
 classifying_id_file="benchmarks/classifying.txt"
 touch ${classifying_id_file}

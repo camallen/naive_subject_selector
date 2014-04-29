@@ -15,12 +15,13 @@ class ClassificationSimulation
 
   def run
     # @retire_num.times do
-    3000.times do
+    1000.times do
       @active_user_set.each do |user_id|
-        #under no load my laptop can do ~ 100 in 0.246012 secs, so ~0.0025 sec / update
+        #under no load my workstation can do ~ 100 in 0.88 secs, so ~0.0088 sec / insert
+        #@note: insert is a lot slower than the update for arrays and with more contention for the DB this will only bump!
         #attempt to rate limit the input of classifications (using the above then these limits will roughly work)
-        # (0.0025) = 400/s 24000/min -> no sleep just run as fast as it can
-        # (0.01)   = 100/s 6000/min
+        # (0.0025) = 400/s 24000/min
+        # (0.01)   = 100/s 6000/min -> no sleep just run as fast as it can
         # (0.02)   = 50/s  3000/min
         # (0.05)   = 20/s  1200/min
         # (0.067)  = 15/s  900/min
@@ -29,6 +30,9 @@ class ClassificationSimulation
         # (0.67)   = 1.5/s 90/min
         # sleep(0.01)
         classify_subject(user_id)
+        #TODO: what about retiring a subject
+        # post benchmark?
+        # External to the service...?
       end
     end
     puts "Finished classifying the set of users: #{@active_user_set} - total classified: #{@number_classified}"
@@ -37,15 +41,12 @@ class ClassificationSimulation
   private
 
     def classify_subject(user_id)
-      subject_id = pick_subject_to_classify(user_id)
-      update_sql = "UPDATE \"project_subjects\" SET \"seen_user_ids\" = array_append(seen_user_ids, '#{user_id}'), active = (CASE WHEN array_length(seen_user_ids, 1)+1 >= #{@retire_num} THEN false ELSE active END) WHERE \"id\" = #{subject_id};"
-      ActiveRecord::Base.connection.execute(update_sql)
+      user = User.find(user_id)
+      subject_id = user.random_unseen_subjects.first
+      #insert_sql = "INSERT INTO user_seen_subjects (user_id, subject_id) VALUES (#{user_id}, #{subject_id});"
+      #ActiveRecord::Base.connection.execute(insert_sql)
+      UserSeenSubject.new(user_id: user_id, subject_id: subject_id).save(validate: false)
       @number_classified += 1
-    end
-
-    def pick_subject_to_classify(user_id)
-      query = "NOT (seen_user_ids @> '{#{user_id}}') AND (array_length(seen_user_ids, 1) IS NULL OR array_length(seen_user_ids, 1) < #{@retire_num})"
-      ProjectSubject.where(active: true).where(query).limit(100).pluck(:id).sample(10).first
     end
 
     def median_query_time

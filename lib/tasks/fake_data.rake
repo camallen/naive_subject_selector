@@ -5,11 +5,11 @@ namespace :fake_data do
   def fake_range
     #test / beta project
     #(1..1000)
-    #(1..200_000)
+    (1..200_000)
     #(1..1_000_000)
     #(1..2_000_000)
     #very large project
-    (1..5_000_000)
+    #(1..5_000_000)
   end
 
   def fake_project_subject_id(id)

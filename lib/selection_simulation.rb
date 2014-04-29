@@ -14,20 +14,15 @@ class SelectionSimulation
     #prime the DB connection
     ProjectSubject.first
     @active_user_set.each do |user_id|
-      select_user_subjects(user_id)
+      user = User.find(user_id)
+      @query_times << Benchmark.measure { user.random_unseen_subjects }.real
+      #don't saturate the machine - limit to 10 queries / second or so...
+      sleep(0.1)
     end
     puts "#{@query_times.min}, #{@query_times.max}, #{ave_query_time}, #{median_query_time}, [ #{@query_times.join(" ")} ]"
   end
 
   private
-
-  def select_user_subjects(user_id)
-    # query = "'#{user_id}' != ALL (seen_user_ids) AND (array_length(seen_user_ids, 1) IS NULL OR array_length(seen_user_ids, 1) < #{@retire_num})"
-    query = "NOT (seen_user_ids @> '{#{user_id}}') AND (array_length(seen_user_ids, 1) IS NULL OR array_length(seen_user_ids, 1) < #{@retire_num})"
-    @query_times << Benchmark.measure { ProjectSubject.where(active: true).where(query).limit(100).sample(10) }.real
-    #don't saturate the machine - limit to 10 queries / second or so...
-    sleep(0.1)
-  end
 
   def query_times_length
     @qt_length ||= @query_times.length
