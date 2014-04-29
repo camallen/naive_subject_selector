@@ -5,7 +5,8 @@ namespace :fake_data do
   def fake_range
     #test / beta project
     #(1..1000)
-    (1..200_000)
+    #(1..200_000)
+    (1..1_000_000)
     #very large project
     # (1..5_000_000)
   end
@@ -60,6 +61,10 @@ namespace :fake_data do
 
   def unseen_project_subjects
     ProjectSubject.select(:id).map(&:id) - UserSeenSubject.select(:subject_id).map(&:subject_id)
+  end
+
+  def truncate_user_seen_subjects!
+    ActiveRecord::Base.connection.execute("TRUNCATE user_seen_subjects")
   end
 
   IdPair = Struct.new(:user_id, :subject_id)
@@ -124,6 +129,7 @@ namespace :fake_data do
 
   desc 'simulate power users and the long tail'
   task :fake_power_users => :environment do
+    truncate_user_seen_subjects!
     percent_complete = (fake_range.last * 0.85).to_i
     completed_subject_ids = fake_range.to_a.sample(percent_complete)
     completed_subject_ids.each_slice(2000) do |batch_of_subject_ids|
@@ -137,18 +143,15 @@ namespace :fake_data do
     end
   end
 
-  desc 'create a simulation to get the shape of a the count size query distribution'
+  desc 'create a simulation to get the shape of the randomness of the unseen subject distribution'
   task :run_psuedo_random_selection_simulation => :environment do
-    ProjectSubject.update_all seen_user_ids: []
+    truncate_user_seen_subjects!
     (1..25).each do |classification_num|
       #select a random user among the 20
       (1..20).each do |user_num|
-        #the crux of it here...randomly sample a set from a possible limit (would look for just ID's in reality as well)
-        #this is linear progression through the empty set of unseen subjects on a sliding window
-        query_str = "'#{user_num}' != ALL (seen_user_ids) AND (array_length(seen_user_ids, 1) IS NULL OR array_length(seen_user_ids, 1) < #{retirement_range.last})"
-        if ps = ProjectSubject.where(query_str).limit(100).sample(1).first
-          # ps = ProjectSubject.where(query_str).limit(1).first
-          ps.update_column 'seen_user_ids', ps.seen_user_ids << user_num
+        user = User.find(user_num)
+        if ps_id = user.random_unseen_subjects(1).first
+          UserSeenSubject.create(user_id: user_num, subject_id: ps_id)
         else
           raise Exception.new("ERROR IN SELECTION -> NEED TO FIND AT LEAST ONE SUBJECT TO SERVE!")
         end

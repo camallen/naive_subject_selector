@@ -45,7 +45,23 @@ counts.sort_by { |k,v| v }
 
 ### Query plans ###
 power_user_id = 1
-query = "NOT EXISTS (SELECT subject_id FROM user_seen_subjects USS where user_id = #{power_user_id} AND id = USS.subject_id)"
-query = "id NOT IN (SELECT subject_id FROM user_seen_subjects where user_id = #{power_user_id})"
-ProjectSubject.where(active: true).where(query).limit(100).explain
-ProjectSubject.where(query).limit(100).explain
+
+raw_query = %{ SELECT DISTINCT PS.id
+  FROM project_subjects PS
+  WHERE PS.active = 't'
+  AND (NOT EXISTS (SELECT subject_id FROM user_seen_subjects USS where user_id = #{power_user_id} AND PS.id = USS.subject_id))
+  LIMIT (100)
+}.gsub!("\n", "")
+print ActiveRecord::Base.connection.explain(raw_query)
+
+sub_query = "id NOT IN (SELECT subject_id FROM user_seen_subjects where user_id = #{power_user_id})"
+ProjectSubject.where(active: true).where(sub_query).limit(100).explain
+
+## QUERY TIMES ###
+ActiveRecord::Base.connection.select_values(raw_query)
+ProjectSubject.where(active: true).where(sub_query).limit(100)
+
+
+#### SUBJECT DISTRIBUTION ######
+user = User.find(1)
+user.random_unseen_subjects
