@@ -17,14 +17,16 @@ class ClassificationSimulation
     # @retire_num.times do
     3000.times do
       @active_user_set.each do |user_id|
-        #under no load my workstation can do ~ 100 in 0.88 secs, so ~0.0088 sec / insert
-        ### ??? WHY IS THIS??? ####
+        #workstation with SATA drive not running SSD
+        #under no load my workstation can do ~ 100 in 0.86 secs, so ~0.0086 sec / insert
         #under no load my laptop      can do ~ 100 in 0.18 secs, so ~0.0018 sec / insert
-        #@note: with more process / request contention for the DB this number degrades.
+        #@note: with more process / request contention for the DB this number degrades drastically depending on the media type.
+        #       DB server IOPS will factor in here
 
         #attempt to rate limit the input of classifications (using the above then these limits will roughly work)
-        # (0.0018) = 555/s 33300/min -> As fast as the laptop can go
+        # (0.0018) = 555/s 33300/min -> as fast as the laptop can go
         # (0.0025) = 400/s 24000/min
+        # (0.0086) = 116/s 6960/min -> as fast the workstation can go
         # (0.01)   = 100/s 6000/min
         # (0.02)   = 50/s  3000/min
         # (0.05)   = 20/s  1200/min
